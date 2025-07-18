@@ -125,6 +125,107 @@ $profileSchema = new ObjectSchema(
 );
 ```
 
+### AnyOfSchema
+
+When you need to accept multiple possible types for the same field. Perfect for flexible APIs!
+
+```php
+use Prism\Prism\Schema\AnyOfSchema;
+use Prism\Prism\Schema\StringSchema;
+use Prism\Prism\Schema\NumberSchema;
+use Prism\Prism\Schema\ObjectSchema;
+
+// Simple example: ID that can be string or number
+$flexibleIdSchema = new AnyOfSchema(
+    name: 'id',
+    description: 'User ID that can be either string UUID or numeric ID',
+    schemas: [
+        new StringSchema('id', 'UUID string like "123e4567-e89b"'),
+        new NumberSchema('id', 'Numeric ID like 12345'),
+    ]
+);
+
+// Complex example: Address that can be string or object
+$addressSchema = new AnyOfSchema(
+    name: 'address',
+    description: 'Address as simple string or structured object',
+    schemas: [
+        new StringSchema('address', 'Simple address like "123 Main St, City"'),
+        new ObjectSchema(
+            name: 'address',
+            description: 'Structured address with components',
+            properties: [
+                new StringSchema('street', 'Street address'),
+                new StringSchema('city', 'City name'),
+                new StringSchema('state', 'State/Province'),
+                new StringSchema('zip', 'Postal code'),
+            ],
+            requiredFields: ['street', 'city']
+        ),
+    ]
+);
+```
+
+### OneOfSchema
+
+When you need to enforce that data matches exactly one of several possible schemas. Unlike `anyOf`, `oneOf` ensures strict exclusivity.
+
+```php
+use Prism\Prism\Schema\OneOfSchema;
+use Prism\Prism\Schema\ObjectSchema;
+use Prism\Prism\Schema\StringSchema;
+use Prism\Prism\Schema\NumberSchema;
+
+// Payment method that must be exactly one type
+$paymentSchema = new OneOfSchema(
+    name: 'payment_method',
+    description: 'Payment method must be exactly one of these types',
+    schemas: [
+        new ObjectSchema(
+            name: 'credit_card',
+            description: 'Credit card payment',
+            properties: [
+                new StringSchema('card_number', 'Card number'),
+                new StringSchema('cvv', 'CVV code'),
+                new StringSchema('expiry', 'Expiry date'),
+            ],
+            requiredFields: ['card_number', 'cvv', 'expiry']
+        ),
+        new ObjectSchema(
+            name: 'bank_transfer',
+            description: 'Bank transfer payment',
+            properties: [
+                new StringSchema('account_number', 'Bank account number'),
+                new StringSchema('routing_number', 'Routing number'),
+            ],
+            requiredFields: ['account_number', 'routing_number']
+        ),
+        new ObjectSchema(
+            name: 'digital_wallet',
+            description: 'Digital wallet payment',
+            properties: [
+                new StringSchema('wallet_id', 'Wallet identifier'),
+                new StringSchema('provider', 'Wallet provider'),
+            ],
+            requiredFields: ['wallet_id', 'provider']
+        ),
+    ]
+);
+
+// Simple example: Value must be either string or number (not both)
+$strictTypeSchema = new OneOfSchema(
+    name: 'value',
+    description: 'Value must be exactly string or exactly number',
+    schemas: [
+        new StringSchema('value', 'String value'),
+        new NumberSchema('value', 'Numeric value'),
+    ]
+);
+```
+
+> [!NOTE]
+> **anyOf vs oneOf**: Use `anyOf` when data can match one or more schemas (flexible), and `oneOf` when data must match exactly one schema (strict). For example, use `oneOf` for payment methods where you need exactly one payment type, not a combination.
+
 ## Nullable Fields
 
 Sometimes, not every field is required. You can make any schema nullable by setting the `nullable` parameter to `true`:
@@ -135,6 +236,38 @@ use Prism\Prism\Schema\StringSchema;
 $bioSchema = new StringSchema(
     name: 'bio',
     description: 'Optional user biography',
+    nullable: true
+);
+
+// AnyOfSchema can also be nullable
+$nullableAnyOf = new AnyOfSchema(
+    name: 'contact',
+    description: 'Contact info that can be email, phone, or null',
+    schemas: [
+        new StringSchema('email', 'Email address'),
+        new StringSchema('phone', 'Phone number'),
+    ],
+    nullable: true
+);
+
+// OneOfSchema can also be nullable
+$nullableOneOf = new OneOfSchema(
+    name: 'format',
+    description: 'Data format that must be exactly one type or null',
+    schemas: [
+        new ObjectSchema(
+            name: 'json',
+            description: 'JSON format',
+            properties: [new StringSchema('data', 'JSON string')],
+            requiredFields: ['data']
+        ),
+        new ObjectSchema(
+            name: 'xml',
+            description: 'XML format',
+            properties: [new StringSchema('xml', 'XML string')],
+            requiredFields: ['xml']
+        ),
+    ],
     nullable: true
 );
 ```

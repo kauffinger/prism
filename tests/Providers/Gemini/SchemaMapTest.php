@@ -3,11 +3,13 @@
 declare(strict_types=1);
 
 use Prism\Prism\Providers\Gemini\Maps\SchemaMap;
+use Prism\Prism\Schema\AnyOfSchema;
 use Prism\Prism\Schema\ArraySchema;
 use Prism\Prism\Schema\BooleanSchema;
 use Prism\Prism\Schema\EnumSchema;
 use Prism\Prism\Schema\NumberSchema;
 use Prism\Prism\Schema\ObjectSchema;
+use Prism\Prism\Schema\OneOfSchema;
 use Prism\Prism\Schema\StringSchema;
 
 it('maps array schema correctly', function (): void {
@@ -117,6 +119,146 @@ it('maps object schema correctly', function (): void {
             ],
         ],
         'required' => ['testName'],
+        'nullable' => true,
+    ]);
+});
+
+it('maps anyOf schema correctly', function (): void {
+    $map = (new SchemaMap(new AnyOfSchema(
+        name: 'testAnyOf',
+        description: 'test anyOf description',
+        schemas: [
+            new StringSchema('value', 'String value'),
+            new NumberSchema('value', 'Number value'),
+        ],
+        nullable: false,
+    )))->toArray();
+
+    expect($map)->toBe([
+        'description' => 'test anyOf description',
+        'anyOf' => [
+            [
+                'description' => 'String value',
+                'type' => 'string',
+            ],
+            [
+                'description' => 'Number value',
+                'type' => 'number',
+            ],
+        ],
+    ]);
+});
+
+it('maps anyOf schema with nullable correctly', function (): void {
+    $map = (new SchemaMap(new AnyOfSchema(
+        name: 'testAnyOf',
+        description: 'test anyOf description',
+        schemas: [
+            new StringSchema('value', 'String value'),
+            new NumberSchema('value', 'Number value'),
+        ],
+        nullable: true,
+    )))->toArray();
+
+    expect($map)->toBe([
+        'description' => 'test anyOf description',
+        'anyOf' => [
+            [
+                'description' => 'String value',
+                'type' => 'string',
+            ],
+            [
+                'description' => 'Number value',
+                'type' => 'number',
+            ],
+            [
+                'type' => 'null',
+            ],
+        ],
+        'nullable' => true,
+    ]);
+});
+
+it('maps oneOf schema correctly', function (): void {
+    $map = (new SchemaMap(new OneOfSchema(
+        name: 'testOneOf',
+        description: 'test oneOf description',
+        schemas: [
+            new ObjectSchema(
+                name: 'option1',
+                description: 'First option',
+                properties: [
+                    new StringSchema('name', 'Name field'),
+                ],
+                requiredFields: ['name']
+            ),
+            new ObjectSchema(
+                name: 'option2',
+                description: 'Second option',
+                properties: [
+                    new NumberSchema('count', 'Count field'),
+                ],
+                requiredFields: ['count']
+            ),
+        ],
+        nullable: false,
+    )))->toArray();
+
+    expect($map)->toBe([
+        'description' => 'test oneOf description',
+        'oneOf' => [
+            [
+                'description' => 'First option',
+                'type' => 'object',
+                'properties' => [
+                    'name' => [
+                        'description' => 'Name field',
+                        'type' => 'string',
+                    ],
+                ],
+                'required' => ['name'],
+            ],
+            [
+                'description' => 'Second option',
+                'type' => 'object',
+                'properties' => [
+                    'count' => [
+                        'description' => 'Count field',
+                        'type' => 'number',
+                    ],
+                ],
+                'required' => ['count'],
+            ],
+        ],
+    ]);
+});
+
+it('maps oneOf schema with nullable correctly', function (): void {
+    $map = (new SchemaMap(new OneOfSchema(
+        name: 'testOneOf',
+        description: 'test oneOf description',
+        schemas: [
+            new StringSchema('value', 'String value'),
+            new NumberSchema('value', 'Number value'),
+        ],
+        nullable: true,
+    )))->toArray();
+
+    expect($map)->toBe([
+        'description' => 'test oneOf description',
+        'oneOf' => [
+            [
+                'description' => 'String value',
+                'type' => 'string',
+            ],
+            [
+                'description' => 'Number value',
+                'type' => 'number',
+            ],
+            [
+                'type' => 'null',
+            ],
+        ],
         'nullable' => true,
     ]);
 });

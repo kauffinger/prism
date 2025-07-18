@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use Prism\Prism\Schema\AnyOfSchema;
 use Prism\Prism\Schema\ArraySchema;
 use Prism\Prism\Schema\BooleanSchema;
 use Prism\Prism\Schema\EnumSchema;
 use Prism\Prism\Schema\NumberSchema;
 use Prism\Prism\Schema\ObjectSchema;
+use Prism\Prism\Schema\OneOfSchema;
 use Prism\Prism\Schema\StringSchema;
 
 it('they can have nested properties', function (): void {
@@ -237,5 +239,268 @@ it('non-nullable enum with single type returns single type', function (): void {
         'description' => 'the type of user',
         'enum' => ['admin', 'super_admin', 'standard'],
         'type' => 'string',
+    ]);
+});
+
+it('can use anyOf schema for multiple types', function (): void {
+    $anyOfSchema = new AnyOfSchema(
+        name: 'flexible_id',
+        description: 'An ID that can be either a string or number',
+        schemas: [
+            new StringSchema('id', 'String ID'),
+            new NumberSchema('id', 'Numeric ID'),
+        ]
+    );
+
+    expect($anyOfSchema->toArray())->toBe([
+        'description' => 'An ID that can be either a string or number',
+        'anyOf' => [
+            [
+                'description' => 'String ID',
+                'type' => 'string',
+            ],
+            [
+                'description' => 'Numeric ID',
+                'type' => 'number',
+            ],
+        ],
+    ]);
+});
+
+it('can use anyOf schema with complex types', function (): void {
+    $anyOfSchema = new AnyOfSchema(
+        name: 'address',
+        description: 'Address that can be simple string or complex object',
+        schemas: [
+            new StringSchema('address', 'Simple address string'),
+            new ObjectSchema(
+                name: 'address',
+                description: 'Structured address object',
+                properties: [
+                    new StringSchema('street', 'Street address'),
+                    new StringSchema('city', 'City name'),
+                    new StringSchema('zip', 'Zip code'),
+                ],
+                requiredFields: ['street', 'city']
+            ),
+        ]
+    );
+
+    expect($anyOfSchema->toArray())->toBe([
+        'description' => 'Address that can be simple string or complex object',
+        'anyOf' => [
+            [
+                'description' => 'Simple address string',
+                'type' => 'string',
+            ],
+            [
+                'description' => 'Structured address object',
+                'type' => 'object',
+                'properties' => [
+                    'street' => [
+                        'description' => 'Street address',
+                        'type' => 'string',
+                    ],
+                    'city' => [
+                        'description' => 'City name',
+                        'type' => 'string',
+                    ],
+                    'zip' => [
+                        'description' => 'Zip code',
+                        'type' => 'string',
+                    ],
+                ],
+                'required' => ['street', 'city'],
+                'additionalProperties' => false,
+            ],
+        ],
+    ]);
+});
+
+it('can make anyOf schema nullable', function (): void {
+    $anyOfSchema = new AnyOfSchema(
+        name: 'nullable_value',
+        description: 'Value that can be string, number, or null',
+        schemas: [
+            new StringSchema('value', 'String value'),
+            new NumberSchema('value', 'Numeric value'),
+        ],
+        nullable: true
+    );
+
+    expect($anyOfSchema->toArray())->toBe([
+        'description' => 'Value that can be string, number, or null',
+        'anyOf' => [
+            [
+                'description' => 'String value',
+                'type' => 'string',
+            ],
+            [
+                'description' => 'Numeric value',
+                'type' => 'number',
+            ],
+            [
+                'type' => 'null',
+            ],
+        ],
+    ]);
+});
+
+it('can use oneOf schema for mutually exclusive types', function (): void {
+    $oneOfSchema = new OneOfSchema(
+        name: 'payment_method',
+        description: 'Payment method must be exactly one of these types',
+        schemas: [
+            new ObjectSchema(
+                name: 'credit_card',
+                description: 'Credit card payment',
+                properties: [
+                    new StringSchema('card_number', 'Card number'),
+                    new StringSchema('cvv', 'CVV code'),
+                ],
+                requiredFields: ['card_number', 'cvv']
+            ),
+            new ObjectSchema(
+                name: 'bank_transfer',
+                description: 'Bank transfer payment',
+                properties: [
+                    new StringSchema('account_number', 'Bank account number'),
+                    new StringSchema('routing_number', 'Routing number'),
+                ],
+                requiredFields: ['account_number', 'routing_number']
+            ),
+        ]
+    );
+
+    expect($oneOfSchema->toArray())->toBe([
+        'description' => 'Payment method must be exactly one of these types',
+        'oneOf' => [
+            [
+                'description' => 'Credit card payment',
+                'type' => 'object',
+                'properties' => [
+                    'card_number' => [
+                        'description' => 'Card number',
+                        'type' => 'string',
+                    ],
+                    'cvv' => [
+                        'description' => 'CVV code',
+                        'type' => 'string',
+                    ],
+                ],
+                'required' => ['card_number', 'cvv'],
+                'additionalProperties' => false,
+            ],
+            [
+                'description' => 'Bank transfer payment',
+                'type' => 'object',
+                'properties' => [
+                    'account_number' => [
+                        'description' => 'Bank account number',
+                        'type' => 'string',
+                    ],
+                    'routing_number' => [
+                        'description' => 'Routing number',
+                        'type' => 'string',
+                    ],
+                ],
+                'required' => ['account_number', 'routing_number'],
+                'additionalProperties' => false,
+            ],
+        ],
+    ]);
+});
+
+it('can use oneOf schema with simple types', function (): void {
+    $oneOfSchema = new OneOfSchema(
+        name: 'strict_id',
+        description: 'ID must be exactly string or exactly number',
+        schemas: [
+            new StringSchema('id', 'String ID format'),
+            new NumberSchema('id', 'Numeric ID format'),
+        ]
+    );
+
+    expect($oneOfSchema->toArray())->toBe([
+        'description' => 'ID must be exactly string or exactly number',
+        'oneOf' => [
+            [
+                'description' => 'String ID format',
+                'type' => 'string',
+            ],
+            [
+                'description' => 'Numeric ID format',
+                'type' => 'number',
+            ],
+        ],
+    ]);
+});
+
+it('can make oneOf schema nullable', function (): void {
+    $oneOfSchema = new OneOfSchema(
+        name: 'optional_format',
+        description: 'Data in one specific format or null',
+        schemas: [
+            new ObjectSchema(
+                name: 'json_format',
+                description: 'JSON formatted data',
+                properties: [
+                    new StringSchema('format', 'Format type'),
+                    new StringSchema('data', 'JSON string data'),
+                ],
+                requiredFields: ['format', 'data']
+            ),
+            new ObjectSchema(
+                name: 'xml_format',
+                description: 'XML formatted data',
+                properties: [
+                    new StringSchema('format', 'Format type'),
+                    new StringSchema('xml', 'XML string data'),
+                ],
+                requiredFields: ['format', 'xml']
+            ),
+        ],
+        nullable: true
+    );
+
+    expect($oneOfSchema->toArray())->toBe([
+        'description' => 'Data in one specific format or null',
+        'oneOf' => [
+            [
+                'description' => 'JSON formatted data',
+                'type' => 'object',
+                'properties' => [
+                    'format' => [
+                        'description' => 'Format type',
+                        'type' => 'string',
+                    ],
+                    'data' => [
+                        'description' => 'JSON string data',
+                        'type' => 'string',
+                    ],
+                ],
+                'required' => ['format', 'data'],
+                'additionalProperties' => false,
+            ],
+            [
+                'description' => 'XML formatted data',
+                'type' => 'object',
+                'properties' => [
+                    'format' => [
+                        'description' => 'Format type',
+                        'type' => 'string',
+                    ],
+                    'xml' => [
+                        'description' => 'XML string data',
+                        'type' => 'string',
+                    ],
+                ],
+                'required' => ['format', 'xml'],
+                'additionalProperties' => false,
+            ],
+            [
+                'type' => 'null',
+            ],
+        ],
     ]);
 });

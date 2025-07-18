@@ -12,11 +12,13 @@ use InvalidArgumentException;
 use Prism\Prism\Concerns\HasProviderOptions;
 use Prism\Prism\Contracts\Schema;
 use Prism\Prism\Exceptions\PrismException;
+use Prism\Prism\Schema\AnyOfSchema;
 use Prism\Prism\Schema\ArraySchema;
 use Prism\Prism\Schema\BooleanSchema;
 use Prism\Prism\Schema\EnumSchema;
 use Prism\Prism\Schema\NumberSchema;
 use Prism\Prism\Schema\ObjectSchema;
+use Prism\Prism\Schema\OneOfSchema;
 use Prism\Prism\Schema\StringSchema;
 use Throwable;
 use TypeError;
@@ -136,6 +138,34 @@ class Tool
         bool $required = true,
     ): self {
         $this->withParameter(new EnumSchema($name, $description, $options), $required);
+
+        return $this;
+    }
+
+    /**
+     * @param  array<int, Schema>  $schemas
+     */
+    public function withAnyOfParameter(
+        string $name,
+        string $description,
+        array $schemas,
+        bool $required = true,
+    ): self {
+        $this->withParameter(new AnyOfSchema($name, $description, $schemas), $required);
+
+        return $this;
+    }
+
+    /**
+     * @param  array<int, Schema>  $schemas
+     */
+    public function withOneOfParameter(
+        string $name,
+        string $description,
+        array $schemas,
+        bool $required = true,
+    ): self {
+        $this->withParameter(new OneOfSchema($name, $description, $schemas), $required);
 
         return $this;
     }
