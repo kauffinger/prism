@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Providers\Anthropic;
 
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Prism\Prism\Enums\Provider;
@@ -14,7 +15,7 @@ use Prism\Prism\Facades\Tool;
 use Prism\Prism\Prism;
 use Prism\Prism\Providers\Anthropic\Handlers\Text;
 use Prism\Prism\Providers\Anthropic\ValueObjects\MessagePartWithCitations;
-use Prism\Prism\ValueObjects\Messages\Support\Document;
+use Prism\Prism\ValueObjects\Media\Document;
 use Prism\Prism\ValueObjects\Messages\UserMessage;
 use Prism\Prism\ValueObjects\ProviderRateLimit;
 use Prism\Prism\ValueObjects\ProviderTool;
@@ -382,6 +383,28 @@ describe('Anthropic citations', function (): void {
 
         expect($response->messages->last()->additionalContent['messagePartsWithCitations'])->toHaveCount(5);
         expect($response->steps[0]->additionalContent['messagePartsWithCitations'][0])->toBeInstanceOf(MessagePartWithCitations::class);
+    });
+
+    it('works with the web search tool', function (): void {
+        FixtureResponse::fakeResponseSequence('v1/messages', 'anthropic/generate-text-with-web-search-citations');
+
+        $response = Prism::text()
+            ->using(Provider::Anthropic, 'claude-3-5-haiku-latest')
+            ->withPrompt('What is the weather going to be like in London today?')
+            ->withProviderTools([new ProviderTool(type: 'web_search_20250305', name: 'web_search')])
+            ->asText();
+
+        $citationChunk = Arr::first(
+            $response->additionalContent['messagePartsWithCitations'],
+            fn (MessagePartWithCitations $part): bool => $part->citations !== [] && $part->citations[0]->type === 'web_search_result_location'
+        );
+
+        expect($citationChunk->text)->toContain('temperatures');
+        expect($citationChunk->citations)->toHaveCount(1);
+        expect($citationChunk->citations[0]->type)->toBe('web_search_result_location');
+        expect($citationChunk->citations[0]->citedText)->toContain('temperatures');
+        expect($citationChunk->citations[0]->documentTitle)->toContain('Weather');
+        expect($citationChunk->citations[0]->url)->toBe('https://www.easeweather.com/europe/united-kingdom/england/greater-london/london/july');
     });
 });
 
